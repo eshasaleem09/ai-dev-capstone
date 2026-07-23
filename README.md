@@ -1,31 +1,54 @@
-# ai-dev-capstone.
 # AI Dev Capstone
 
-## About
-This repository contains my capstone project for the AI-Assisted Development track.
+## Project Overview
+
+This repository contains my capstone project for the AI-Assisted Development track. The goal of this project is to build professional frontend applications while following AI-assisted development practices and Git best practices.
+
+## Features
+
+- AI-assisted development workflow
+- Version control using Git and GitHub
+- Clean and organized project structure
+- Frontend development best practices
 
 ## Tech Stack
-- HTML
-- CSS
-- JavaScript
+
+- HTML5
+- CSS3
+- JavaScript (ES6+)
 - React
 - Node.js
 - Git
 - GitHub
 
-## Goals
-- Learn AI-assisted development
-- Follow Git best practices
-- Build a professional frontend capstone project
 ## Installation
 
-1. Clone the repository.
-2. Open it in VS Code.
-3. Start developing.
+1. Clone the repository:
+
+   ```bash
+   git clone https://github.com/eshasaleem09/ai-dev-capstone.git
+   ```
+
+2. Open the project in VS Code.
+
+3. Install dependencies (if required):
+
+   ```bash
+   npm install
+   ```
+
+4. Start development.
+
+## Project Status
+
+🚧 This project is currently under development as part of the AI-Assisted Development Capstone.
+
+## Goals
+
+- Learn AI-assisted software development
+- Follow Git best practices
+- Build a professional frontend capstone project
 
 ## Author
-<<<<<<< HEAD
-Esha Saleem
-=======
-Esha Saleem
->>>>>>> 9b66c9d2bb1e1c68be4b26ffe20c6f4a60cc629c
+
+**Esha Saleem**
