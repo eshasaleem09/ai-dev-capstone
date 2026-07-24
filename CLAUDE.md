@@ -29,3 +29,12 @@ This repository is for my AI-Assisted Development capstone project. I want to bu
 - Help debug errors step by step.
 - Keep responses concise and practical.
 - Follow Conventional Commits for Git commit messages.
+## Project-Specific Rules Learned
+
+- All React form components must include proper validation, clear error messages, and user-friendly feedback before submission.
+
+- Before completing any AI-generated feature, review the generated code manually and test the main user flows to catch possible mistakes.
+
+- Large React components should be divided into smaller reusable components when they become difficult to maintain.
+
+- Every new feature should include accessibility considerations such as proper labels, readable text, and keyboard-friendly interactions.
