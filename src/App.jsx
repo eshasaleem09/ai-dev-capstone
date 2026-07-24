@@ -1,309 +1,519 @@
-import { useState } from "react";
-import { Check, Bell, Shield, User, AlertTriangle, ChevronRight } from "lucide-react";
+import { useRef, useState } from "react";
+import "./App.css";
 
 const SECTIONS = [
-  { id: "profile", label: "Profile", icon: User },
-  { id: "notifications", label: "Notifications", icon: Bell },
-  { id: "security", label: "Security", icon: Shield },
-  { id: "danger", label: "Danger zone", icon: AlertTriangle },
+  { id: "profile", label: "Profile" },
+  { id: "notifications", label: "Notifications" },
+  { id: "security", label: "Security" },
 ];
 
-function Toggle({ checked, onChange, label, description }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      onClick={() => onChange(!checked)}
-      className="w-full flex items-center justify-between gap-4 py-4 text-left group"
-    >
-      <span>
-        <span className="block text-[15px] text-[#1C1B18]">{label}</span>
-        {description && (
-          <span className="block text-[13px] text-[#8A8478] mt-0.5">{description}</span>
-        )}
-      </span>
-      <span
-        className={`relative shrink-0 w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none ${
-          checked ? "bg-[#3D5A52]" : "bg-[#E4E0D6]"
-        }`}
-      >
-        <span
-          className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-[#FAF8F3] shadow-sm transition-transform duration-200 ${
-            checked ? "translate-x-5" : "translate-x-0"
-          }`}
-        />
-      </span>
-    </button>
-  );
+const TIMEZONES = [
+  "UTC",
+  "America/New_York",
+  "America/Chicago",
+  "America/Los_Angeles",
+  "Europe/London",
+  "Europe/Berlin",
+  "Asia/Karachi",
+  "Asia/Kolkata",
+  "Asia/Singapore",
+  "Australia/Sydney",
+];
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const USERNAME_RE = /^[a-zA-Z0-9_]+$/;
+
+const initialForm = {
+  fullName: "",
+  email: "",
+  username: "",
+  bio: "",
+  timezone: "",
+  notifyEmail: true,
+  notifySms: false,
+  notifyPush: true,
+  currentPassword: "",
+  newPassword: "",
+  confirmPassword: "",
+  twoFactor: false,
+};
+
+function validate(form) {
+  const errors = {};
+
+  if (!form.fullName.trim()) {
+    errors.fullName = "Enter your full name.";
+  }
+
+  if (!form.email.trim()) {
+    errors.email = "Enter your email address.";
+  } else if (!EMAIL_RE.test(form.email.trim())) {
+    errors.email = "Enter a valid email address.";
+  }
+
+  if (!form.username.trim()) {
+    errors.username = "Choose a username.";
+  } else if (form.username.trim().length < 3) {
+    errors.username = "Username needs at least 3 characters.";
+  } else if (!USERNAME_RE.test(form.username.trim())) {
+    errors.username = "Letters, numbers, and underscores only.";
+  }
+
+  if (!form.timezone) {
+    errors.timezone = "Select a timezone.";
+  }
+
+  const touchingPassword =
+    form.currentPassword || form.newPassword || form.confirmPassword;
+
+  if (touchingPassword) {
+    if (!form.currentPassword) {
+      errors.currentPassword = "Enter your current password.";
+    }
+    if (!form.newPassword) {
+      errors.newPassword = "Enter a new password.";
+    } else if (form.newPassword.length < 8) {
+      errors.newPassword = "Use at least 8 characters.";
+    }
+    if (!form.confirmPassword) {
+      errors.confirmPassword = "Confirm your new password.";
+    } else if (form.confirmPassword !== form.newPassword) {
+      errors.confirmPassword = "Passwords don't match.";
+    }
+  }
+
+  return errors;
 }
 
-function TextField({ label, value, onChange, type = "text", placeholder, hint }) {
-  return (
-    <label className="block py-3">
-      <span className="block text-[13px] tracking-wide uppercase text-[#8A8478] mb-2">
-        {label}
-      </span>
-      <input
-        type={type}
-        value={value}
-        placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full bg-transparent border-0 border-b border-[#DDD8CC] focus:border-[#3D5A52] outline-none text-[15px] text-[#1C1B18] py-2 transition-colors placeholder:text-[#B7B1A2]"
-      />
-      {hint && <span className="block text-[12px] text-[#A8A290] mt-1.5">{hint}</span>}
-    </label>
-  );
-}
+export default function App() {
+  const [form, setForm] = useState(initialForm);
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
+  const [activeSection, setActiveSection] = useState("profile");
+  const [status, setStatus] = useState("idle"); // idle | saved
 
-export default function SettingsForm() {
-  const [active, setActive] = useState("profile");
-  const [saved, setSaved] = useState(false);
-
-  const [name, setName] = useState("Alex Rivera");
-  const [email, setEmail] = useState("alex@example.com");
-  const [handle, setHandle] = useState("alexrivera");
-  const [bio, setBio] = useState("");
-
-  const [notifyProduct, setNotifyProduct] = useState(true);
-  const [notifyDigest, setNotifyDigest] = useState(true);
-  const [notifyMentions, setNotifyMentions] = useState(true);
-  const [notifyMarketing, setNotifyMarketing] = useState(false);
-
-  const [twoFactor, setTwoFactor] = useState(false);
-  const [sessionAlerts, setSessionAlerts] = useState(true);
-
-  const [confirmDelete, setConfirmDelete] = useState("");
-
-  const handleSave = (e) => {
-    e.preventDefault();
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2200);
+  const sectionRefs = {
+    profile: useRef(null),
+    notifications: useRef(null),
+    security: useRef(null),
   };
+  const fieldRefs = useRef({});
+
+  function updateField(name, value) {
+    setForm((prev) => ({ ...prev, [name]: value }));
+    setStatus("idle");
+  }
+
+  function handleChange(e) {
+    const { name, type, value, checked } = e.target;
+    updateField(name, type === "checkbox" ? checked : value);
+  }
+
+  function handleBlur(e) {
+    const { name } = e.target;
+    setTouched((prev) => ({ ...prev, [name]: true }));
+    setErrors(validate({ ...form }));
+  }
+
+  function scrollToSection(id) {
+    setActiveSection(id);
+    sectionRefs[id].current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    const nextErrors = validate(form);
+    setErrors(nextErrors);
+    setTouched(
+      Object.fromEntries(Object.keys(initialForm).map((key) => [key, true]))
+    );
+
+    const errorFields = Object.keys(nextErrors);
+    if (errorFields.length > 0) {
+      const firstField = errorFields[0];
+      const node = fieldRefs.current[firstField];
+      node?.scrollIntoView({ behavior: "smooth", block: "center" });
+      node?.focus();
+      setStatus("idle");
+      return;
+    }
+
+    setStatus("saved");
+  }
+
+  function fieldError(name) {
+    return touched[name] && errors[name] ? errors[name] : null;
+  }
 
   return (
-    <div className="min-h-full w-full bg-[#F5F2EA] flex items-start justify-center py-10 px-4">
-      <form
-        onSubmit={handleSave}
-        className="w-full max-w-3xl bg-[#FAF8F3] rounded-sm shadow-[0_1px_2px_rgba(0,0,0,0.04)] border border-[#E9E4D8] overflow-hidden"
-      >
-        {/* Header */}
-        <div className="px-8 pt-8 pb-6 border-b border-[#E9E4D8] flex items-center justify-between">
-          <div>
-            <h1 className="text-[26px] leading-tight text-[#1C1B18]" style={{ fontFamily: "'Fraunces', Georgia, serif" }}>
-              Account settings
-            </h1>
-            <p className="text-[14px] text-[#8A8478] mt-1">
-              Manage how your account looks, notifies, and stays secure.
-            </p>
-          </div>
-          <div
-            className={`text-[13px] px-3 py-1.5 rounded-full border transition-all duration-300 ${
-              saved
-                ? "opacity-100 border-[#3D5A52] text-[#3D5A52] bg-[#3D5A52]/5"
-                : "opacity-0 border-transparent"
-            }`}
-          >
-            <span className="inline-flex items-center gap-1.5">
-              <Check size={14} /> Saved
-            </span>
-          </div>
-        </div>
+    <div className="settings">
+      <form className="settings-shell" onSubmit={handleSubmit} noValidate>
+        <header className="settings-header">
+          <p className="settings-eyebrow">Account console</p>
+          <h1 className="settings-title">Settings</h1>
+          <p className="settings-subtitle">
+            Manage your profile, alerts, and account security in one place.
+          </p>
+        </header>
 
-        <div className="flex flex-col md:flex-row">
-          {/* Section nav */}
-          <nav className="md:w-56 shrink-0 border-b md:border-b-0 md:border-r border-[#E9E4D8] px-4 py-4 md:py-6">
-            <ol className="space-y-1">
-              {SECTIONS.map((s, i) => {
-                const Icon = s.icon;
-                const isActive = active === s.id;
-                return (
-                  <li key={s.id}>
-                    <button
-                      type="button"
-                      onClick={() => setActive(s.id)}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-sm text-[14px] transition-colors ${
-                        isActive
-                          ? "bg-[#3D5A52] text-[#FAF8F3]"
-                          : "text-[#5C5748] hover:bg-[#EFEBE0]"
-                      }`}
-                    >
-                      <span
-                        className={`text-[11px] tabular-nums ${
-                          isActive ? "text-[#CFE0DA]" : "text-[#B7B1A2]"
-                        }`}
-                      >
-                        {String(i + 1).padStart(2, "0")}
-                      </span>
-                      <Icon size={15} className={isActive ? "text-[#FAF8F3]" : "text-[#8A8478]"} />
-                      <span className="flex-1 text-left">{s.label}</span>
-                      {isActive && <ChevronRight size={14} className="text-[#CFE0DA]" />}
-                    </button>
-                  </li>
-                );
-              })}
-            </ol>
+        <div className="settings-body">
+          <nav className="settings-nav" aria-label="Settings sections">
+            <div className="settings-nav-track">
+              {SECTIONS.map((section) => (
+                <button
+                  type="button"
+                  key={section.id}
+                  className={
+                    "settings-nav-item" +
+                    (activeSection === section.id ? " is-active" : "")
+                  }
+                  onClick={() => scrollToSection(section.id)}
+                >
+                  <span className="settings-nav-dot" aria-hidden="true" />
+                  {section.label}
+                </button>
+              ))}
+            </div>
           </nav>
 
-          {/* Panel */}
-          <div className="flex-1 px-8 py-6 min-h-[420px]">
-            {active === "profile" && (
-              <div>
-                <h2 className="text-[13px] tracking-wide uppercase text-[#8A8478] mb-1">Profile</h2>
-                <p className="text-[13px] text-[#A8A290] mb-4">
-                  Visible to people you collaborate with.
-                </p>
-                <div className="divide-y divide-[#EFEBE0]">
-                  <TextField label="Full name" value={name} onChange={setName} />
-                  <TextField label="Email address" value={email} onChange={setEmail} type="email" />
-                  <TextField
-                    label="Handle"
-                    value={handle}
-                    onChange={setHandle}
-                    hint="Used in your public profile URL."
-                  />
-                  <label className="block py-3">
-                    <span className="block text-[13px] tracking-wide uppercase text-[#8A8478] mb-2">
-                      Bio
-                    </span>
-                    <textarea
-                      value={bio}
-                      onChange={(e) => setBio(e.target.value)}
-                      placeholder="A short line about what you're working on."
-                      rows={3}
-                      className="w-full bg-transparent border border-[#DDD8CC] focus:border-[#3D5A52] outline-none text-[15px] text-[#1C1B18] rounded-sm p-3 transition-colors placeholder:text-[#B7B1A2] resize-none"
-                    />
+          <div className="settings-panels">
+            {/* Profile */}
+            <section
+              id="profile"
+              ref={sectionRefs.profile}
+              className="settings-panel"
+              aria-labelledby="profile-heading"
+            >
+              <div className="panel-heading">
+                <h2 id="profile-heading">Profile</h2>
+                <p>How you appear across the workspace.</p>
+              </div>
+
+              <div className="field-grid">
+                <div className="field">
+                  <label htmlFor="fullName">
+                    Full name <span className="required">*</span>
                   </label>
+                  <input
+                    id="fullName"
+                    name="fullName"
+                    type="text"
+                    autoComplete="name"
+                    value={form.fullName}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    ref={(el) => (fieldRefs.current.fullName = el)}
+                    aria-invalid={Boolean(fieldError("fullName"))}
+                    aria-describedby="fullName-error"
+                    className={fieldError("fullName") ? "has-error" : ""}
+                    placeholder="Jordan Malik"
+                  />
+                  {fieldError("fullName") && (
+                    <p className="field-error" id="fullName-error">
+                      {fieldError("fullName")}
+                    </p>
+                  )}
                 </div>
-              </div>
-            )}
 
-            {active === "notifications" && (
-              <div>
-                <h2 className="text-[13px] tracking-wide uppercase text-[#8A8478] mb-1">
-                  Notifications
-                </h2>
-                <p className="text-[13px] text-[#A8A290] mb-2">
-                  Choose what's worth interrupting you for.
-                </p>
-                <div className="divide-y divide-[#EFEBE0]">
-                  <Toggle
-                    checked={notifyProduct}
-                    onChange={setNotifyProduct}
-                    label="Product updates"
-                    description="New features and changes worth knowing about."
-                  />
-                  <Toggle
-                    checked={notifyDigest}
-                    onChange={setNotifyDigest}
-                    label="Weekly digest"
-                    description="A short summary every Monday morning."
-                  />
-                  <Toggle
-                    checked={notifyMentions}
-                    onChange={setNotifyMentions}
-                    label="Mentions and replies"
-                    description="When someone tags you directly."
-                  />
-                  <Toggle
-                    checked={notifyMarketing}
-                    onChange={setNotifyMarketing}
-                    label="Offers and promotions"
-                    description="Occasional discounts and partner news."
-                  />
-                </div>
-              </div>
-            )}
-
-            {active === "security" && (
-              <div>
-                <h2 className="text-[13px] tracking-wide uppercase text-[#8A8478] mb-1">Security</h2>
-                <p className="text-[13px] text-[#A8A290] mb-2">
-                  Keep your account locked down.
-                </p>
-                <div className="divide-y divide-[#EFEBE0]">
-                  <Toggle
-                    checked={twoFactor}
-                    onChange={setTwoFactor}
-                    label="Two-factor authentication"
-                    description="Require a code from your phone when signing in."
-                  />
-                  <Toggle
-                    checked={sessionAlerts}
-                    onChange={setSessionAlerts}
-                    label="New device alerts"
-                    description="Email me when a new device signs in."
-                  />
-                  <div className="py-4 flex items-center justify-between">
-                    <span>
-                      <span className="block text-[15px] text-[#1C1B18]">Password</span>
-                      <span className="block text-[13px] text-[#8A8478] mt-0.5">
-                        Last changed 4 months ago.
-                      </span>
-                    </span>
-                    <button
-                      type="button"
-                      className="text-[13px] text-[#3D5A52] border border-[#3D5A52] rounded-sm px-3 py-1.5 hover:bg-[#3D5A52] hover:text-[#FAF8F3] transition-colors"
-                    >
-                      Change password
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {active === "danger" && (
-              <div>
-                <h2 className="text-[13px] tracking-wide uppercase text-[#B3492E] mb-1">
-                  Danger zone
-                </h2>
-                <p className="text-[13px] text-[#A8A290] mb-4">
-                  These actions can't be undone. Proceed carefully.
-                </p>
-                <div className="border border-[#E7C9BC] bg-[#FBF0EB] rounded-sm p-5">
-                  <p className="text-[14px] text-[#1C1B18] mb-1">Delete this account</p>
-                  <p className="text-[13px] text-[#8A7F76] mb-4">
-                    All profile data, files, and history will be permanently removed.
-                  </p>
-                  <label className="block mb-3">
-                    <span className="block text-[12px] text-[#8A7F76] mb-1.5">
-                      Type <span className="text-[#B3492E] font-medium">delete</span> to confirm
-                    </span>
-                    <input
-                      type="text"
-                      value={confirmDelete}
-                      onChange={(e) => setConfirmDelete(e.target.value)}
-                      className="w-full bg-[#FAF8F3] border border-[#E7C9BC] focus:border-[#B3492E] outline-none text-[14px] rounded-sm px-3 py-2 transition-colors"
-                    />
+                <div className="field">
+                  <label htmlFor="email">
+                    Email <span className="required">*</span>
                   </label>
-                  <button
-                    type="button"
-                    disabled={confirmDelete !== "delete"}
-                    className="text-[13px] px-4 py-2 rounded-sm bg-[#B3492E] text-[#FAF8F3] disabled:bg-[#E7C9BC] disabled:text-[#B3492E]/60 disabled:cursor-not-allowed transition-colors"
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    value={form.email}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    ref={(el) => (fieldRefs.current.email = el)}
+                    aria-invalid={Boolean(fieldError("email"))}
+                    aria-describedby="email-error"
+                    className={fieldError("email") ? "has-error" : ""}
+                    placeholder="jordan@company.com"
+                  />
+                  {fieldError("email") && (
+                    <p className="field-error" id="email-error">
+                      {fieldError("email")}
+                    </p>
+                  )}
+                </div>
+
+                <div className="field">
+                  <label htmlFor="username">
+                    Username <span className="required">*</span>
+                  </label>
+                  <input
+                    id="username"
+                    name="username"
+                    type="text"
+                    autoComplete="username"
+                    value={form.username}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    ref={(el) => (fieldRefs.current.username = el)}
+                    aria-invalid={Boolean(fieldError("username"))}
+                    aria-describedby="username-error"
+                    className={fieldError("username") ? "has-error" : ""}
+                    placeholder="jordanm"
+                  />
+                  {fieldError("username") && (
+                    <p className="field-error" id="username-error">
+                      {fieldError("username")}
+                    </p>
+                  )}
+                </div>
+
+                <div className="field">
+                  <label htmlFor="timezone">
+                    Timezone <span className="required">*</span>
+                  </label>
+                  <select
+                    id="timezone"
+                    name="timezone"
+                    value={form.timezone}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    ref={(el) => (fieldRefs.current.timezone = el)}
+                    aria-invalid={Boolean(fieldError("timezone"))}
+                    aria-describedby="timezone-error"
+                    className={fieldError("timezone") ? "has-error" : ""}
                   >
-                    Delete my account
-                  </button>
+                    <option value="" disabled>
+                      Select a timezone
+                    </option>
+                    {TIMEZONES.map((tz) => (
+                      <option key={tz} value={tz}>
+                        {tz}
+                      </option>
+                    ))}
+                  </select>
+                  {fieldError("timezone") && (
+                    <p className="field-error" id="timezone-error">
+                      {fieldError("timezone")}
+                    </p>
+                  )}
+                </div>
+
+                <div className="field field-span-2">
+                  <label htmlFor="bio">Bio</label>
+                  <textarea
+                    id="bio"
+                    name="bio"
+                    rows={3}
+                    value={form.bio}
+                    onChange={handleChange}
+                    placeholder="A short line about what you work on."
+                  />
+                  <p className="field-hint">Optional. Shown on your public profile.</p>
                 </div>
               </div>
-            )}
+            </section>
+
+            {/* Notifications */}
+            <section
+              id="notifications"
+              ref={sectionRefs.notifications}
+              className="settings-panel"
+              aria-labelledby="notifications-heading"
+            >
+              <div className="panel-heading">
+                <h2 id="notifications-heading">Notifications</h2>
+                <p>Choose where you want to hear from us.</p>
+              </div>
+
+              <div className="switch-list">
+                <label className="switch-row">
+                  <span className="switch-copy">
+                    <span className="switch-title">Email</span>
+                    <span className="switch-desc">
+                      Product updates and account activity.
+                    </span>
+                  </span>
+                  <span className="switch">
+                    <input
+                      type="checkbox"
+                      name="notifyEmail"
+                      checked={form.notifyEmail}
+                      onChange={handleChange}
+                    />
+                    <span className="switch-track" aria-hidden="true">
+                      <span className="switch-thumb" />
+                    </span>
+                  </span>
+                </label>
+
+                <label className="switch-row">
+                  <span className="switch-copy">
+                    <span className="switch-title">SMS</span>
+                    <span className="switch-desc">
+                      Time-sensitive alerts only.
+                    </span>
+                  </span>
+                  <span className="switch">
+                    <input
+                      type="checkbox"
+                      name="notifySms"
+                      checked={form.notifySms}
+                      onChange={handleChange}
+                    />
+                    <span className="switch-track" aria-hidden="true">
+                      <span className="switch-thumb" />
+                    </span>
+                  </span>
+                </label>
+
+                <label className="switch-row">
+                  <span className="switch-copy">
+                    <span className="switch-title">Push</span>
+                    <span className="switch-desc">
+                      Real-time alerts on this device.
+                    </span>
+                  </span>
+                  <span className="switch">
+                    <input
+                      type="checkbox"
+                      name="notifyPush"
+                      checked={form.notifyPush}
+                      onChange={handleChange}
+                    />
+                    <span className="switch-track" aria-hidden="true">
+                      <span className="switch-thumb" />
+                    </span>
+                  </span>
+                </label>
+              </div>
+            </section>
+
+            {/* Security */}
+            <section
+              id="security"
+              ref={sectionRefs.security}
+              className="settings-panel"
+              aria-labelledby="security-heading"
+            >
+              <div className="panel-heading">
+                <h2 id="security-heading">Security</h2>
+                <p>Update your password and login protections.</p>
+              </div>
+
+              <div className="field-grid">
+                <div className="field field-span-2">
+                  <label htmlFor="currentPassword">Current password</label>
+                  <input
+                    id="currentPassword"
+                    name="currentPassword"
+                    type="password"
+                    autoComplete="current-password"
+                    value={form.currentPassword}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    ref={(el) => (fieldRefs.current.currentPassword = el)}
+                    aria-invalid={Boolean(fieldError("currentPassword"))}
+                    aria-describedby="currentPassword-error"
+                    className={fieldError("currentPassword") ? "has-error" : ""}
+                  />
+                  {fieldError("currentPassword") && (
+                    <p className="field-error" id="currentPassword-error">
+                      {fieldError("currentPassword")}
+                    </p>
+                  )}
+                </div>
+
+                <div className="field">
+                  <label htmlFor="newPassword">New password</label>
+                  <input
+                    id="newPassword"
+                    name="newPassword"
+                    type="password"
+                    autoComplete="new-password"
+                    value={form.newPassword}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    ref={(el) => (fieldRefs.current.newPassword = el)}
+                    aria-invalid={Boolean(fieldError("newPassword"))}
+                    aria-describedby="newPassword-error"
+                    className={fieldError("newPassword") ? "has-error" : ""}
+                  />
+                  {fieldError("newPassword") && (
+                    <p className="field-error" id="newPassword-error">
+                      {fieldError("newPassword")}
+                    </p>
+                  )}
+                </div>
+
+                <div className="field">
+                  <label htmlFor="confirmPassword">Confirm password</label>
+                  <input
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type="password"
+                    autoComplete="new-password"
+                    value={form.confirmPassword}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    ref={(el) => (fieldRefs.current.confirmPassword = el)}
+                    aria-invalid={Boolean(fieldError("confirmPassword"))}
+                    aria-describedby="confirmPassword-error"
+                    className={fieldError("confirmPassword") ? "has-error" : ""}
+                  />
+                  {fieldError("confirmPassword") && (
+                    <p className="field-error" id="confirmPassword-error">
+                      {fieldError("confirmPassword")}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <label className="switch-row switch-row-bordered">
+                <span className="switch-copy">
+                  <span className="switch-title">Two-factor authentication</span>
+                  <span className="switch-desc">
+                    Require a code in addition to your password.
+                  </span>
+                </span>
+                <span className="switch">
+                  <input
+                    type="checkbox"
+                    name="twoFactor"
+                    checked={form.twoFactor}
+                    onChange={handleChange}
+                  />
+                  <span className="switch-track" aria-hidden="true">
+                    <span className="switch-thumb" />
+                  </span>
+                </span>
+              </label>
+            </section>
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="px-8 py-5 border-t border-[#E9E4D8] flex items-center justify-end gap-3">
-          <button
-            type="button"
-            className="text-[14px] text-[#5C5748] px-4 py-2 rounded-sm hover:bg-[#EFEBE0] transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            className="text-[14px] bg-[#3D5A52] text-[#FAF8F3] px-5 py-2 rounded-sm hover:bg-[#2F4842] transition-colors"
-          >
-            Save changes
-          </button>
-        </div>
+        <footer className="settings-footer">
+          <span className="settings-status" role="status">
+            {status === "saved" ? "Changes saved." : ""}
+          </span>
+          <div className="settings-actions">
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => {
+                setForm(initialForm);
+                setErrors({});
+                setTouched({});
+                setStatus("idle");
+              }}
+            >
+              Reset
+            </button>
+            <button type="submit" className="btn btn-primary">
+              Save changes
+            </button>
+          </div>
+        </footer>
       </form>
     </div>
   );
